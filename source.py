@@ -123,12 +123,14 @@ class Source:
             #print chr(byte)
             bytes.append(byte)
         return bytes
+
     def huffman_encode(self,file):
-        huffmanTable = self.generate_huffman_table(file)
+        huffmanTable,freqCount = self.generate_huffman_table(file)
         compressedBits=[]
-        f = open(file)
+        f = open(file, "rb")
         chars = f.read();
         for c in chars:
+            print c
             symbol=c
             code = huffmanTable[symbol]
             codeAsList = list(code)
@@ -140,9 +142,8 @@ class Source:
         #ToDo Append Huffman Table to the beginning of compressedBits
         tableAsString = ""
         for symbol in huffmanTable:
-
-            tableAsString+=symbol + "=" + huffmanTable[symbol] + "|"
-        tableAsString+="\n"
+            tableAsString+=symbol + chr(freqCount[symbol])
+        tableAsString+="|\n"
         headerBits = self.textToBits(tableAsString)
         print "Compressed Bits: " + str(compressedBits)
         return list(headerBits) + compressedBits
@@ -151,10 +152,12 @@ class Source:
         symToCount = defaultdict(int)
         # break bits into 4 bit symbols (normal ascii would be 8, but we're following spec)
         # get counts of each symbol
-        f = open(file)
+        f = open(file, 'rb')
         chars = f.read()
         for c in chars:
             symToCount[c] += 1
+            if symToCount[c]>255:
+                symToCount[c]=255
             #make the tree
         heap = [[wt, [sym, ""]] for sym, wt in symToCount.items()]
         heapq.heapify(heap)
@@ -167,4 +170,4 @@ class Source:
             for pair in hi[1:]:
                 pair[1] = '1' + pair[1]
             heapq.heappush(heap, [lo[0] + hi[0]] + lo[1:] + hi[1:])
-        return dict(sorted(heapq.heappop(heap)[1:], key=lambda p: (len(p[-1]), p)))
+        return dict(sorted(heapq.heappop(heap)[1:], key=lambda p: (len(p[-1]), p))), symToCount

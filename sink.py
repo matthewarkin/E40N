@@ -1,4 +1,6 @@
 # audiocom library: Source and sink functions
+from collections import defaultdict
+import heapq
 import common_srcsink
 import Image
 from graphs import *
@@ -27,27 +29,88 @@ class Sink:
         
         # Return the received payload for comparison purposes
         bytes = self.bitToByte(recd_bits)
+        #self.printBytes(bytes)
+        header=bytes[0:5]
+        huffman=[]
+        huffman, bytes = self.seperateHuffmanHeader(bytes[4:])
+        codeToSym = self.huffmanFrequencyReader(huffman)
+        bytes = list(self.decompress(codeToSym,bytes))
         ext = ""
         if (recd_bits[0] == 0 and recd_bits[1] == 1):
             ext = "txt"
-            printBytes(bytes)
+            self.printBytes(bytes)
         elif (recd_bits[0] == 0 and recd_bits[1] == 0):
+            print "png file"
             ext = "png"
-        f = open("foo." + ext, "w")
-        for b in range (4, len(bytes)):
-            f.write(chr(bytes[b]))
+            f = open("received." + ext, "wb")
+            print len(bytes)
+            for b in range (0, len(bytes)):
+                print bytes[b]
+                f.write(bytes[b])
 
-        f.close()
+            f.close()
         rcd_payload = recd_bits
         return rcd_payload
 
+    def bytesToBits(self,bytes):
+        for b in bytes:
+            for i in xrange(8):
+                yield (b >> i) & 1
+
+    def decompress(self,codeToSym,bytes):
+        bits=self.bytesToBits(bytes)
+        bitString=""
+        uncompressed=""
+        for i in range(0,len(bytes*8)):
+            int1 = next(bits)
+            #print str(int1)
+            bitString+=str(int1)
+            if(bitString in codeToSym):
+                uncompressed+=codeToSym[bitString]
+                bitString=""
+                #print bitString +"\n"
+        return uncompressed
+
+
+
+
+    def seperateHuffmanHeader(self,bytes):
+        for i in range(0,len(bytes)-1,1):
+            if (chr(bytes[i]) == '|') and (chr(bytes[i+1]) == '\n'):
+                return bytes[0:i], bytes[i+2:]
+
+    def huffmanFrequencyReader(self,huffmanHeader):
+        symToCount=defaultdict(int)
+        for i in range(0,len(huffmanHeader)-1,2):
+            symToCount[chr(huffmanHeader[i])]=huffmanHeader[i+1]
+            print str(huffmanHeader[i]) +" " + str(huffmanHeader[i+1])
+        heap = [[wt, [sym, ""]] for sym, wt in symToCount.items()]
+        heapq.heapify(heap)
+        #generate the huffman encoding
+        while len(heap) > 1:
+            lo = heapq.heappop(heap)
+            hi = heapq.heappop(heap)
+            for pair in lo[1:]:
+                pair[1] = '0' + pair[1]
+            for pair in hi[1:]:
+                pair[1] = '1' + pair[1]
+            heapq.heappush(heap, [lo[0] + hi[0]] + lo[1:] + hi[1:])
+        SymToCode = dict(sorted(heapq.heappop(heap)[1:], key=lambda p: (len(p[-1]), p)))
+        CodeToSym = defaultdict(str)
+        for sym in SymToCode:
+            CodeToSym[SymToCode[sym]]=sym
+        return CodeToSym
+
+
     def printBytes(self, bytes):
-        for b in range (4, len(bytes)):
-            print chr(bytes[b])
+        text = ""
+        for b in range (0, len(bytes)):
+            text+= bytes[b]
+        print text
 
     def bits2text(self, bits):
         # Convert the received payload to text (string)
-        return  text
+        return  bits
 
     def image_from_bits(self, bits,filename):
         # Convert the received payload to an image and save it
@@ -73,8 +136,6 @@ class Sink:
                 byteString += str(b)
 
             byteString = byteString[::-1]
-            print byteString
             byte = int(byteString, 2)
-            print chr(byte)
             bytes.append(byte)
         return bytes
