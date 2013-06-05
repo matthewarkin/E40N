@@ -61,7 +61,8 @@ class Receiver:
         samples is the highest. 
         '''
         # Fill in your implementation of the cross-correlation check procedure
-        preamble_bits = [1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1]  
+        preamble_bits = [1,1,1,1,1,0,1,1,1,1,0,0,1,1,1,0,1,0,1,1,0,0,0,0,1,0,1,1,1,0,0,0,
+                         1,1,0,1,1,0,1,0,0,1,0,0,0,1,0,0,1,1,0,0,1,0,1,0,1,0,0,0,0,0,0]
         preamble_samples = []
         for x in range(0, len(preamble_bits)):
             sample = [preamble_bits[x]]*self.spb
@@ -115,7 +116,8 @@ class Receiver:
            the preamble. If it is proceed, if not terminate the program. 
         Output is the array of data_bits (bits without preamble)
         '''
-        preamble_bits = [1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1]
+        preamble_bits = [1,1,1,1,1,0,1,1,1,1,0,0,1,1,1,0,1,0,1,1,0,0,0,0,1,0,1,1,1,0,0,0,
+                         1,1,0,1,1,0,1,0,0,1,0,0,0,1,0,0,1,1,0,0,1,0,1,0,1,0,0,0,0,0,0]
         
 
         ones = []

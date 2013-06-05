@@ -77,6 +77,10 @@ if __name__ == '__main__':
         parser.add_option("-g", "--graph", action="store_true", dest="graph",
                           default=False, help="show graphs")
 
+        # Channel coding options
+        parser.add_option("-H", "--Hamming", type="int", dest="cc_len",
+                          default=7, help="Codeword length (n) of Hamming code")
+
         (opt,args) = parser.parse_args()
 
         
@@ -89,17 +93,18 @@ if __name__ == '__main__':
     if opt.bypass:
         print '\t  Noise:', opt.noise, ' lag:', opt.lag, 'h: [', opt.h, ']'
     print '\tFrequency:', fc, 'Hz'
-    
+    print '\tHamming code n :', opt.cc_len
 ########################################################
 
     #instantiate and run the source block
     src = Source(opt.monotone, opt.fname)
     src_payload, databits = src.process()  
-    
+
     # instantiate and run the transmitter block
-    xmitter = Transmitter(fc, opt.samplerate, opt.one, opt.spb, opt.silence)
-    databits_with_preamble = xmitter.add_preamble(databits)
-    samples = xmitter.bits_to_samples(databits_with_preamble)
+    xmitter = Transmitter(fc, opt.samplerate, opt.one, opt.spb, opt.silence, opt.cc_len)
+    coded_bits = xmitter.encode(databits)
+    coded_bits_with_preamble = xmitter.add_preamble(coded_bits)
+    samples = xmitter.bits_to_samples(coded_bits_with_preamble)
     mod_samples = xmitter.modulate(samples)
 
 ####################################    
@@ -126,14 +131,14 @@ if __name__ == '__main__':
     one, zero, thresh = r.detect_threshold(demod_samples)
     barker_start = r.detect_preamble(demod_samples, thresh, one)
     rcdbits = r.demap_and_check(demod_samples, barker_start)
+    decoded_bits = r.decode(rcdbits)
 
     # push into sink
     sink = Sink()
-    rcd_payload = sink.process(databits)#sink.process(rcdbits)
+    rcd_payload = sink.process(databits)#sink.process(decoded_bits)
     
-
     if len(rcd_payload) > 0:
-        hd, err = common_srcsink.hamming(rcd_payload, src_payload)
+        hd, err = common_srcsink.hamming(decoded_bits, databits)
         print 'Hamming distance for payload at frequency', fc,'Hz:', hd, 'BER:', err
     else:
         print 'Could not recover transmission.'

@@ -22,7 +22,8 @@ class Transmitter:
         silence_bits = []
         for x in range(0, self.silence):
             silence_bits.append(0)
-        databits_with_preamble = [1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1]
+        databits_with_preamble = [1,1,1,1,1,0,1,1,1,1,0,0,1,1,1,0,1,0,1,1,0,0,0,0,1,0,1,1,1,0,0,0,
+                                  1,1,0,1,1,0,1,0,0,1,0,0,0,1,0,0,1,1,0,0,1,0,1,0,1,0,0,0,0,0,0]
         databits_with_preamble = silence_bits + databits_with_preamble
         databits_with_preamble = numpy.append(databits_with_preamble, databits)
         return databits_with_preamble

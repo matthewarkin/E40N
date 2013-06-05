@@ -1,9 +1,11 @@
 # audiocom library: Source and sink functions
+from collections import defaultdict
 import common_srcsink as common
 import Image
 from graphs import *
 import binascii
 import random
+import heapq
 
 
 
@@ -17,8 +19,10 @@ class Source:
     def process(self):
             # Form the databits, from the filename 
             if self.fname is not None:
-                databits = self.file2bits(self.fname)
-                
+                #databits = self.text2bits(self.fname)
+                # Compress my databits
+                databits = self.huffman_encode(self.fname)
+
                 if self.fname.endswith('.png') or self.fname.endswith('.PNG'):
                     #databits =
                     payload = self.get_header(len(databits), "image")
@@ -33,13 +37,13 @@ class Source:
                 payload = self.get_header(self.monotone, "monotone")
 
 
-            bytes = self.bitToByte(databits) #note that this is for testing purposes
-            f = open("test.txt", "w")
-            for b in range (0, len(bytes)):
-                #print bytes[b]
-                f.write(chr(bytes[b]))
-
-            f.close()
+            # bytes = self.bitToByte(databits) #note that this is for testing purposes
+            # f = open("test.txt", "w")
+            # for b in range (0, len(bytes)):
+            #     #print bytes[b]
+            #     f.write(chr(bytes[b]))
+            #
+            # f.close()
             return numpy.array(databits), numpy.array(payload + databits)
 
     def text2bits(self, filename):
@@ -57,6 +61,11 @@ class Source:
 
         return bits
 
+    def textToBits(self, text):
+        bytes = (ord(b) for b in text)
+        for b in bytes:
+            for i in xrange(8):
+                yield (b >> i) & 1
     def bits(self, filename):
         bytes = (ord(b) for b in filename.read())
         for b in bytes:
@@ -114,4 +123,48 @@ class Source:
             #print chr(byte)
             bytes.append(byte)
         return bytes
+    def huffman_encode(self,file):
+        huffmanTable = self.generate_huffman_table(file)
+        compressedBits=[]
+        f = open(file)
+        chars = f.read();
+        for c in chars:
+            symbol=c
+            code = huffmanTable[symbol]
+            codeAsList = list(code)
+            for s in codeAsList:
+                if s == '1':
+                    compressedBits.append(1)
+                else:
+                    compressedBits.append(0)
+        #ToDo Append Huffman Table to the beginning of compressedBits
+        tableAsString = ""
+        for symbol in huffmanTable:
 
+            tableAsString+=symbol + "=" + huffmanTable[symbol] + "|"
+        tableAsString+="\n"
+        headerBits = self.textToBits(tableAsString)
+        print "Compressed Bits: " + str(compressedBits)
+        return list(headerBits) + compressedBits
+
+    def generate_huffman_table(self,file):
+        symToCount = defaultdict(int)
+        # break bits into 4 bit symbols (normal ascii would be 8, but we're following spec)
+        # get counts of each symbol
+        f = open(file)
+        chars = f.read()
+        for c in chars:
+            symToCount[c] += 1
+            #make the tree
+        heap = [[wt, [sym, ""]] for sym, wt in symToCount.items()]
+        heapq.heapify(heap)
+        #generate the huffman encoding
+        while len(heap) > 1:
+            lo = heapq.heappop(heap)
+            hi = heapq.heappop(heap)
+            for pair in lo[1:]:
+                pair[1] = '0' + pair[1]
+            for pair in hi[1:]:
+                pair[1] = '1' + pair[1]
+            heapq.heappush(heap, [lo[0] + hi[0]] + lo[1:] + hi[1:])
+        return dict(sorted(heapq.heappop(heap)[1:], key=lambda p: (len(p[-1]), p)))
